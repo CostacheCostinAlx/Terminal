@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
 
 void check_command(char *commandstr,int *loop)
 {
   char *tok;
+  int found = 0;
+
   tok=strtok(commandstr," ");
 
   if(tok==NULL) return;
@@ -30,14 +32,46 @@ void check_command(char *commandstr,int *loop)
   {
     tok=strtok(NULL," ");
     if(tok==NULL) return;
+
     if(strcmp(tok,"echo") == 0 || strcmp(tok,"type") == 0 || strcmp(tok,"exit") == 0)
       printf("%s is a shell builtin\n",tok);
     else 
-      printf("%s: not found\n",tok);
+    {
+        char *env_value=getenv("PATH");
+        
+        if(env_value!=NULL)
+        {
+            char aux[4096];
+            char *dir;
 
-   }
+            strcpy(aux,env_value);
 
-   else printf("%s: command not found\n",tok);
+            dir=strtok(aux,":");
+
+            while(dir!=NULL)
+            {
+                char full_path[1024];
+                
+                strcpy(full_path,dir);
+                strcat(full_path,"/");
+                strcat(full_path,tok);
+
+                if(access(full_path,X_OK)== 0)  //Checks if it is executable
+                {
+                    printf("%s is %s\n",tok,full_path);
+                    found = 1;
+                    break;
+                }
+                dir = strtok(NULL,":");
+            }                    
+        }
+        if(found==0) printf("%s: not found\n",tok);
+    }
+  } 
+  else
+  {   
+    printf("%s: command not found\n", tok);
+  } 
 }
 
 
@@ -55,10 +89,7 @@ int main(int argc, char *argv[]) {
     command[strcspn(command, "\n")] = 0;  
 
     check_command(command,&loop);
-
-
   }
- 
+  return 0;
 
 }
-
