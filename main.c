@@ -2,13 +2,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h> // Header for Wait()
 
 void check_command(char *commandstr,int *loop)
 {
   char *tok;
+  char *args[100];
+  int nr_arg = 0;
   int found = 0;
 
   tok=strtok(commandstr," ");
+
+  args[nr_arg++] = tok;
 
   if(tok==NULL) return;
 
@@ -69,14 +74,11 @@ void check_command(char *commandstr,int *loop)
     }
   } 
   // LOGIC FOR GETTING THE ARGUMENTS
-  else if (strstr(tok,".exe") != NULL)
+  else
   {
-    char *args[100];
     char *arg_pointer;
-   
-    int nr_arg=0;
     
-    arg_pointer=strtok(tok," ");
+    arg_pointer=strtok(NULL," ");
     
     while(arg_pointer != NULL)
     {
@@ -85,43 +87,31 @@ void check_command(char *commandstr,int *loop)
     }
     args[nr_arg] = NULL;
 
-    // EXECUTING THE PROGRAM LOGIC
-    char *env_value = getenv("PATH");
-    /*if(env_value!=NULL)
-    {
-      char aux[4096];
-      char *dir;
-
-      strcpy(aux,env_value);
-
-      dir=strtok(aux,":");
-
-      while(dir!=NULL)
-      {
-      char full_path[1024];
-                
-      strcpy(full_path,dir);
-      strcat(full_path,"/");
-      strcat(full_path,tok);
-
-      dir = strtok(NULL,":");
-      }    
-      if(access(full_path,F_OK)== 0 && access(full_path,X_OK) == 0)  //Checks if the program exists and is executable
-      {
-        execvp(args[],NULL);
-        break;
-      }                
-    }
     
-  }*/
+    pid_t pid = fork(); // To remember who is the parent
+    if (pid < 0)   //Failed to create new Process
+    {
+    perror("Failed to Fork");
+    } 
+    else if (pid == 0)  // We are in the child process
+    {
+        // LOGIC FOR EXECUTING THE PROGRAM
+        // execvp() function Searches for the program in the PATH variable, we don't need to recreate the full_path
+        // as I did for "type" command
+    
+       if (execvp(args[0], args) == -1) 
+        {
+            printf("%s: command not found\n", args[0]);
+            exit(1); 
+        }
+    }  
+    else  // We are in the parent process
+    {
+    wait(NULL);
+    }
+  }
 
-  else
-  {   
-    printf("%s: command not found\n", tok);
-  } 
 }
-
-
 int main(int argc, char *argv[]) {
   // Flush after every printf
   setbuf(stdout, NULL);
